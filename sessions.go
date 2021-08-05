@@ -1,0 +1,62 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/gorilla/sessions"
+)
+
+//Storing data in session cookies using gorilla/sessions
+
+/*
+Cookies are small pieces of data stored in the browser of a user and are
+sent to our server on each request. In them, we can store e.g. whether
+or not a user is logged in into our website and figure out who he actually
+is (in our system).
+*/
+
+var (
+	//key must be 16, 24 or 32 bytes long
+	key   = []byte("super-secret-key")
+	store = sessions.NewCookieStore(key)
+)
+
+func secret(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "cookie-name")
+
+	//Check if user is authenticated
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	fmt.Fprintln(w, "The cake is a lie")
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "cookie-name")
+
+	//Authenticated will be defined here
+	//...
+
+	//Set User as authenticated
+	session.Values["authenticated"] = true
+	session.Save(r, w)
+}
+
+func logout(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "cookie-name")
+
+	//Revoke users access
+	session.Values["authenticated"] = false
+	session.Save(r, w)
+}
+
+func main() {
+	http.HandleFunc("/secret", secret)
+	http.HandleFunc("/login", login)
+	http.HandleFunc("/logout", logout)
+
+	http.ListenAndServe(":8080", nil)
+}
